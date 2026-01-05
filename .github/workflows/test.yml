@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,7 +22,7 @@ jobs:
         with:
           node-version-file: 'package.json'
           cache: 'pnpm'
-              
+
       - name: Install dependencies
         run: pnpm install
 
