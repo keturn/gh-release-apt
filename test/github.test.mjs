@@ -1,6 +1,6 @@
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { filterDebAssets, downloadDebAssets, downloadFile } from '../src/github.mjs';
+import { filterDebAssets, downloadDebAssets, extractAssetSHA256, categorizeAssetsByChecksum } from '../src/github.mjs';
 import fs from 'fs/promises';
 import path from 'path';
 import { tmpdir } from 'os';
@@ -37,6 +37,125 @@ test('filterDebAssets returns empty array when no .deb assets', () => {
 
   const debAssets = filterDebAssets(mockRelease);
   assert.equal(debAssets.length, 0, 'Should return empty array when no .deb assets');
+});
+
+test('extractAssetSHA256 extracts checksum from digest', () => {
+  const asset = {
+    digest: 'sha256:10ee826b440b68c3e19f004d330116a9173e2f96052afa3a98e67f6af948c676',
+  };
+  
+  const sha256 = extractAssetSHA256(asset);
+  assert.equal(sha256, '10ee826b440b68c3e19f004d330116a9173e2f96052afa3a98e67f6af948c676');
+});
+
+test('extractAssetSHA256 returns null when digest does not start with sha256:', () => {
+  const asset = {
+    digest: 'md5:abc123',
+  };
+  const sha256 = extractAssetSHA256(asset);
+  assert.equal(sha256, null);
+});
+
+test('categorizeAssetsByChecksum skips assets with matching checksums and existing files', async () => {
+  const assets = [
+    {
+      name: 'package1.deb',
+      digest: 'sha256:abc123',
+    },
+    {
+      name: 'package2.deb',
+      digest: 'sha256:def456',
+    },
+  ];
+  
+  const existingChecksums = new Map([
+    ['package1.deb', 'abc123'],
+    ['package2.deb', 'def456'],
+  ]);
+  
+  const downloadDir = path.join(tmpdir(), 'test-categorize-' + Date.now());
+  await fs.mkdir(downloadDir, { recursive: true });
+  
+  try {
+    // Create file1 to simulate it exists
+    const file1Path = path.join(downloadDir, 'package1.deb');
+    await fs.writeFile(file1Path, 'content');
+    
+    // file2 doesn't exist
+    
+    const result = await categorizeAssetsByChecksum(assets, existingChecksums, downloadDir);
+    
+    // package1 should be skipped (matching checksum + file exists)
+    assert.equal(result.toSkip.length, 1);
+    assert.equal(result.toSkip[0].asset.name, 'package1.deb');
+    
+    // package2 should be downloaded (matching checksum but file doesn't exist)
+    assert.equal(result.toDownload.length, 1);
+    assert.equal(result.toDownload[0].asset.name, 'package2.deb');
+  } finally {
+    try {
+      await fs.rm(downloadDir, { recursive: true, force: true });
+    } catch {}
+  }
+});
+
+test('categorizeAssetsByChecksum downloads assets with mismatched checksums', async () => {
+  const assets = [
+    {
+      name: 'package.deb',
+      digest: 'sha256:abc123',
+    },
+  ];
+  
+  const existingChecksums = new Map([
+    ['package.deb', 'different123'], // Different checksum
+  ]);
+  
+  const downloadDir = path.join(tmpdir(), 'test-categorize-mismatch-' + Date.now());
+  await fs.mkdir(downloadDir, { recursive: true });
+  
+  try {
+    const filePath = path.join(downloadDir, 'package.deb');
+    await fs.writeFile(filePath, 'content');
+    
+    const result = await categorizeAssetsByChecksum(assets, existingChecksums, downloadDir);
+    
+    // Should download because checksums don't match
+    assert.equal(result.toDownload.length, 1);
+    assert.equal(result.toDownload[0].asset.name, 'package.deb');
+    assert.equal(result.toSkip.length, 0);
+  } finally {
+    try {
+      await fs.rm(downloadDir, { recursive: true, force: true });
+    } catch {}
+  }
+});
+
+test('categorizeAssetsByChecksum downloads assets not in Packages file', async () => {
+  const assets = [
+    {
+      name: 'newpackage.deb',
+      digest: 'sha256:abc123',
+    },
+  ];
+  
+  const existingChecksums = new Map(); // Empty - asset not in Packages file
+  
+  const downloadDir = path.join(tmpdir(), 'test-categorize-new-' + Date.now());
+  await fs.mkdir(downloadDir, { recursive: true });
+  
+  try {
+    const result = await categorizeAssetsByChecksum(assets, existingChecksums, downloadDir);
+    
+    // Should download because not in Packages file
+    assert.equal(result.toDownload.length, 1);
+    assert.equal(result.toDownload[0].asset.name, 'newpackage.deb');
+    assert.equal(result.toSkip.length, 0);
+  } finally {
+    try {
+      await fs.rm(downloadDir, { recursive: true, force: true });
+    } catch {}
+  }
 });
 
 test('downloadDebAssets skips download when checksum matches', async () => {
