@@ -1,10 +1,8 @@
 import { Octokit } from '@octokit/rest';
-import https from 'https';
-import http from 'http';
 import fs from 'fs/promises';
-import path from 'path';
 import { createWriteStream } from 'fs';
-import { URL } from 'url';
+import path from 'path';
+import { Writable } from 'stream';
 
 /**
  * Fetches the latest release for a GitHub repository
@@ -42,6 +40,17 @@ export async function getLatestRelease(owner, repo, token) {
 }
 
 /**
+ * Filters .deb assets from a GitHub release
+ * @param {Object} release - GitHub release object
+ * @returns {Array} Array of .deb asset objects
+ */
+export function filterDebAssets(release) {
+  return release.assets.filter((asset) =>
+    asset.name.endsWith('.deb')
+  );
+}
+
+/**
  * Downloads all .deb assets from a GitHub release
  * @param {Object} release - GitHub release object
  * @param {string} outputDir - Directory to save downloaded files
@@ -50,20 +59,7 @@ export async function getLatestRelease(owner, repo, token) {
  * @throws {Error} If download fails
  */
 export async function downloadDebAssets(release, outputDir, token) {
-  if (!release.assets || release.assets.length === 0) {
-    throw new Error(`Release ${release.tag_name} has no assets`);
-  }
-
-  // Filter assets that end with .deb
-  const debAssets = release.assets.filter((asset) =>
-    asset.name.endsWith('.deb')
-  );
-
-  if (debAssets.length === 0) {
-    throw new Error(
-      `Release ${release.tag_name} has no .deb assets to download`
-    );
-  }
+  const debAssets = filterDebAssets(release);
 
   // Ensure output directory exists
   await fs.mkdir(outputDir, { recursive: true });
@@ -93,58 +89,21 @@ export async function downloadDebAssets(release, outputDir, token) {
  * @param {string} [token] - Optional GitHub token for authentication
  * @returns {Promise<void>}
  */
-function downloadFile(url, filePath, token) {
-  return new Promise((resolve, reject) => {
-    const urlObj = new URL(url);
-    const isHttps = urlObj.protocol === 'https:';
-    const httpModule = isHttps ? https : http;
+async function downloadFile(url, filePath, token) {
+  const headers = {};
+  if (token) {
+    headers.Authorization = `token ${token}`;
+  }
 
-    const headers = {};
-    if (token) {
-      headers.Authorization = `token ${token}`;
-    }
+  const response = await fetch(url, { headers });
 
-    httpModule
-      .get(url, { headers }, (response) => {
-        if (response.statusCode === 302 || response.statusCode === 301) {
-          // Handle redirects
-          const redirectUrl = response.headers.location;
-          if (!redirectUrl) {
-            reject(new Error('Redirect location not provided'));
-            return;
-          }
-          // Resolve relative redirects
-          const absoluteRedirectUrl = new URL(redirectUrl, url).href;
-          return downloadFile(absoluteRedirectUrl, filePath, token)
-            .then(resolve)
-            .catch(reject);
-        }
+  if (!response.ok) {
+    throw new Error(
+      `Failed to download: ${response.status} ${response.statusText}`
+    );
+  }
 
-        if (response.statusCode !== 200) {
-          reject(
-            new Error(
-              `Failed to download: ${response.statusCode} ${response.statusMessage}`
-            )
-          );
-          return;
-        }
-
-        const fileStream = createWriteStream(filePath);
-        response.pipe(fileStream);
-
-        fileStream.on('finish', () => {
-          fileStream.close();
-          resolve();
-        });
-
-        fileStream.on('error', (err) => {
-          fs.unlink(filePath).catch(() => {});
-          reject(err);
-        });
-      })
-      .on('error', (err) => {
-        reject(err);
-      });
-  });
+  const fileStream = Writable.toWeb(createWriteStream(filePath));
+  await response.body.pipeTo(fileStream);
 }
 

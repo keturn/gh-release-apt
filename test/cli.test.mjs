@@ -1,22 +1,34 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { parseRepository, createCommand } from '../src/cli.mjs';
 
-test('CLI argument parsing test', async () => {
-  // Test that owner/repo format is parsed correctly
-  const testRepo = 'owner/repo';
-  const [owner, repo] = testRepo.split('/');
-  
-  assert(owner === 'owner', 'Owner should be parsed correctly');
-  assert(repo === 'repo', 'Repo should be parsed correctly');
+test('parseRepository parses valid owner/repo format', () => {
+  const result = parseRepository('owner/repo');
+  assert.equal(result.owner, 'owner');
+  assert.equal(result.repo, 'repo');
 });
 
-test('Invalid repository format handling', async () => {
-  const invalidFormats = ['owner', 'owner/', '/repo', ''];
+test('parseRepository throws error for invalid formats', () => {
+  const invalidFormats = ['owner', 'owner/', '/repo', '', 'owner/repo/extra'];
   
   for (const format of invalidFormats) {
-    const parts = format.split('/');
-    const isValid = parts.length === 2 && parts[0] && parts[1];
-    assert(!isValid, `Format "${format}" should be invalid`);
+    assert.throws(
+      () => parseRepository(format),
+      {
+        message: /Invalid repository format/,
+      },
+      `Format "${format}" should throw error`
+    );
   }
+});
+
+test('createCommand uses argParser to validate repository format', () => {
+  const program = createCommand();
+  const arg = program.registeredArguments.find(arg => arg.name() === 'owner/repo');
+  assert(arg);
+
+  const result = arg.parseArg('someone/example');
+  assert.equal(result.owner, 'someone');
+  assert.equal(result.repo, 'example');
 });
 
