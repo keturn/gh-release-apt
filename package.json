@@ -19,6 +19,7 @@
   "dependencies": {
     "@octokit/rest": "^21.0.2",
     "commander": "^12.1.0",
+    "fdir": "^6.5.0",
     "fs-extra": "^11.2.0",
     "zx": "8.8.5-lite"
   },

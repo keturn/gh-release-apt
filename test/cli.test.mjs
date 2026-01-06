@@ -24,8 +24,11 @@ test('parseRepository throws error for invalid formats', () => {
 
 test('createCommand uses argParser to validate repository format', () => {
   const program = createCommand();
-  const arg = program.registeredArguments.find(arg => arg.name() === 'owner/repo');
-  assert(arg);
+  const importCommand = program.commands.find(cmd => cmd.name() === 'import');
+  assert(importCommand, 'import subcommand should exist');
+
+  const arg = importCommand.registeredArguments.find(arg => arg.name() === 'owner/repo');
+  assert(arg, 'owner/repo argument should exist on import subcommand');
 
   const result = arg.parseArg('someone/example');
   assert.equal(result.owner, 'someone');

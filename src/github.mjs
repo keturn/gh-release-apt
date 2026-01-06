@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import { createWriteStream } from 'fs';
 import path from 'path';
 import { Writable } from 'stream';
-import { parsePackagesFile } from './repository.mjs';
+import { extractChecksumMap } from './repository.mjs';
 
 /**
  * Fetches the latest release for a GitHub repository
@@ -112,7 +112,7 @@ export async function downloadDebAssets(release, owner, repo, outputDir, token) 
 
   const packagesPath = path.join(downloadDir, 'Packages');
   
-  const existingChecksums = await parsePackagesFile(packagesPath);
+  const existingChecksums = await extractChecksumMap(packagesPath);
 
   const { toDownload, toSkip } = await categorizeAssetsByChecksum(debAssets, existingChecksums, downloadDir);
 
