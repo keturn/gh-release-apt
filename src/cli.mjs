@@ -3,6 +3,10 @@ import { getLatestRelease, downloadDebAssets } from './github.mjs';
 import { organizeDebFiles } from './repository.mjs';
 import { generatePackagesFile } from './dpkg.mjs';
 import path from 'path';
+import fs from 'fs/promises';
+import { createWriteStream } from 'fs';
+import { finished } from 'stream/promises';
+import { fdir } from 'fdir';
 
 /**
  * Validates and parses the repository identifier format
@@ -56,6 +60,84 @@ export async function runAction(repository, options) {
 }
 
 /**
+ * Recursively finds all files matching a name in a directory
+ * @param {string} dir - Directory to search
+ * @param {string} filename - Filename to search for
+ * @returns {Promise<string[]>} Array of file paths
+ */
+async function findFilesRecursive(dir, filename) {
+  return (new fdir()
+    .withFullPaths()
+    .filter((filePath, isDirectory) => !isDirectory && path.basename(filePath) === filename)
+    .crawl(dir)).withPromise();
+}
+
+/**
+ * Action handler for the assemble command
+ * Concatenates all Packages files from pool/ subdirectories into a single Packages file
+ * Uses streaming writes to avoid loading all content into memory at once
+ * @param {Object} options - Command options
+ * @param {string} [options.output] - Output directory
+ */
+export async function assembleAction(options) {
+  const outputDir = path.resolve(options.output);
+  const poolDir = path.join(outputDir, 'pool');
+  const outputPackagesPath = path.join(outputDir, 'Packages');
+
+  console.log(`Scanning for Packages files in ${poolDir}...`);
+
+  // Find all Packages files in pool/ subdirectories
+  const packagesFiles = await findFilesRecursive(poolDir, 'Packages');
+
+  if (packagesFiles.length === 0) {
+    throw new Error(`No Packages files found in ${poolDir}`);
+  }
+
+  console.log(`Found ${packagesFiles.length} Packages file(s)`);
+  console.log(`Assembling into ${outputPackagesPath}...`);
+
+  // Create write stream for output file
+  const writeStream = createWriteStream(outputPackagesPath, { encoding: 'utf8' });
+
+  try {
+    // Process each Packages file and write to output stream
+    for (let i = 0; i < packagesFiles.length; i++) {
+      const packagesFile = packagesFiles[i];
+      
+      // Read file content and trim trailing whitespace
+      const content = await fs.readFile(packagesFile, 'utf-8');
+      const trimmed = content.trimEnd();
+      
+      if (trimmed) {
+        // Write trimmed content to stream
+        writeStream.write(trimmed);
+      }
+      
+      // Add blank line separator between files (except after the last one)
+      if (i < packagesFiles.length - 1) {
+        writeStream.write('\n\n');
+      } else {
+        // Add final newline after the last file
+        writeStream.write('\n');
+      }
+    }
+
+    // Close the write stream
+    writeStream.end();
+    
+    // Wait for the stream to finish writing
+    await finished(writeStream);
+
+    console.log(`\n✓ Packages file assembled successfully!`);
+    console.log(`  Output file: ${outputPackagesPath}`);
+    console.log(`  Combined ${packagesFiles.length} fragment(s)`);
+  } catch (error) {
+    writeStream.destroy();
+    throw error;
+  }
+}
+
+/**
  * Creates and configures the Commander.js command
  * @returns {Command} Configured command instance
  */
@@ -65,7 +147,11 @@ export function createCommand() {
   program
     .name('gh-release-apt')
     .description('Generate APT repositories from GitHub release .deb assets')
-    .version('1.0.0')
+    .version('1.0.0');
+
+  program
+    .command('import')
+    .description('Import .deb assets from a GitHub release into an APT repository')
     .argument('<owner/repo>', 'GitHub repository in owner/repo format', parseRepository)
     .option(
       '-o, --output <directory>',
@@ -77,6 +163,16 @@ export function createCommand() {
       'GitHub token for authentication (or use GITHUB_TOKEN env var)'
     )
     .action(runAction);
+
+  program
+    .command('assemble')
+    .description('Assemble all Packages fragments from pool/ subdirectories into a single Packages file')
+    .option(
+      '-o, --output <directory>',
+      'Output directory for the APT repository',
+      './apt-repo'
+    )
+    .action(assembleAction);
 
   return program;
 }
