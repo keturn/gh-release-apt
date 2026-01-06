@@ -19,7 +19,8 @@
   "dependencies": {
     "@octokit/rest": "^21.0.2",
     "commander": "^12.1.0",
-    "fs-extra": "^11.2.0"
+    "fs-extra": "^11.2.0",
+    "zx": "8.8.5-lite"
   },
   "devDependencies": {
     "@power-assert/node": "^0.6.0",
