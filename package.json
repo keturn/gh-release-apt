@@ -12,7 +12,8 @@
     "gh-release-apt": "./bin/gh-release-apt.mjs"
   },
   "scripts": {
-    "test": "node --enable-source-maps --import @power-assert/node --test test/*.test.mjs",
+    "test": "node --enable-source-maps --import @power-assert/node --test",
+    "test:coverage": "node --experimental-test-coverage --test",
     "start": "node bin/gh-release-apt.mjs"
   },
   "dependencies": {
