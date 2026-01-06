@@ -17,6 +17,9 @@ importers:
       fs-extra:
         specifier: ^11.2.0
         version: 11.3.3
+      zx:
+        specifier: 8.8.5-lite
+        version: 8.8.5-lite
     devDependencies:
       '@power-assert/node':
         specifier: ^0.6.0
@@ -160,6 +163,10 @@ packages:
     resolution: {integrity: sha512-gptHNQghINnc/vTGIk0SOFGFNXw7JVrlRUtConJRlvaw6DuX0wO5Jeko9sWrMBhh+PsYAZ7oXAiOnf/UKogyiw==}
     engines: {node: '>= 10.0.0'}
 
+  zx@8.8.5-lite:
+    resolution: {integrity: sha512-A/u82oc3sd9SZ46hig3NZKh5V1u0tXOwev5AK+3yH0zdqhiJmhd7NcWS0lq19RLOofagpDBS8K77aXLNAkBESQ==}
+    engines: {node: '>= 12.17.0'}
+
 snapshots:
 
   '@octokit/auth-token@5.1.2': {}
@@ -297,3 +304,5 @@ snapshots:
   universal-user-agent@7.0.3: {}
 
   universalify@2.0.1: {}
+
+  zx@8.8.5-lite: {}

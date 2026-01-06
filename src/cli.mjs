@@ -3,7 +3,6 @@ import { getLatestRelease, downloadDebAssets } from './github.mjs';
 import { organizeDebFiles } from './repository.mjs';
 import { generatePackagesFile } from './dpkg.mjs';
 import path from 'path';
-import fs from 'fs/promises';
 
 /**
  * Validates and parses the repository identifier format
@@ -48,7 +47,7 @@ export async function runAction(repository, options) {
   const { debDir, packagesPath } = await organizeDebFiles(debFiles, owner, repo, release.tag_name, outputDir);
 
   console.log(`Generating Packages file...`);
-  await generatePackagesFile(debDir, packagesPath);
+  await generatePackagesFile(outputDir, packagesPath);
 
   console.log(`\n✓ APT repository created successfully!`);
   console.log(`  Output directory: ${outputDir}`);

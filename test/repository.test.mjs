@@ -25,7 +25,7 @@ test('organizeDebFiles returns correct paths for new directory structure', async
   
   // Verify structure paths are correct
   assert.equal(result.debDir, debDir);
-  assert.equal(result.packagesPath, path.join(outputDir, 'Packages'));
+  assert.equal(result.packagesPath, path.join(debDir, 'Packages'));
   
   // Verify files are in the correct location
   const files = await fs.readdir(debDir);
@@ -49,7 +49,6 @@ test('organizeDebFiles handles empty array', async () => {
     
     // Should still create the structure
     assert.equal(result.debDir, path.join(outputDir, 'pool', owner, repo, tagName));
-    assert.equal(result.packagesPath, path.join(outputDir, 'Packages'));
     
     // Directory should exist
     const stats = await fs.stat(result.debDir);

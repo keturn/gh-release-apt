@@ -2,6 +2,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
+import { $ as zx } from 'zx';
 
 const execAsync = promisify(exec);
 
@@ -13,21 +14,6 @@ const execAsync = promisify(exec);
  * @throws {Error} If dpkg-scanpackages fails or no .deb files are found
  */
 export async function generatePackagesFile(debDir, outputPath) {
-  // Check if directory exists and contains .deb files
-  try {
-    const files = await fs.readdir(debDir);
-    const debFiles = files.filter((file) => file.endsWith('.deb'));
-
-    if (debFiles.length === 0) {
-      throw new Error(`No .deb files found in ${debDir}`);
-    }
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      throw new Error(`Directory not found: ${debDir}`);
-    }
-    throw error;
-  }
-
   // Ensure output directory exists
   const outputDir = path.dirname(outputPath);
   await fs.mkdir(outputDir, { recursive: true });
@@ -36,14 +22,7 @@ export async function generatePackagesFile(debDir, outputPath) {
     // dpkg-scanpackages scans the directory and outputs to stdout
     // We redirect stdout to the Packages file
     // The command format: dpkg-scanpackages <directory> [override-file] > Packages
-    const { stdout, stderr } = await execAsync(
-      `dpkg-scanpackages "${debDir}" /dev/null > "${outputPath}"`
-    );
-
-    if (stderr && !stderr.includes('dpkg-scanpackages')) {
-      // dpkg-scanpackages may write warnings to stderr, but that's usually fine
-      console.warn('dpkg-scanpackages warnings:', stderr);
-    }
+    const process_output = await zx({cwd: debDir})`dpkg-scanpackages --multiversion .`.pipe(outputPath);
 
     // Verify the Packages file was created
     try {

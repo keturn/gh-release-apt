@@ -31,7 +31,7 @@ export async function organizeDebFiles(debFiles, owner, repo, tagName, outputDir
   // Ensure the directory exists (in case there are no files)
   await fs.mkdir(debDir, { recursive: true });
 
-  const packagesPath = path.join(outputDir, 'Packages');
+  const packagesPath = path.join(debDir, 'Packages');
 
   return {
     debDir,
