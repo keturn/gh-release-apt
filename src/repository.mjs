@@ -2,37 +2,50 @@ import fs from 'fs/promises';
 import path from 'path';
 
 /**
- * Parses an existing Packages file and extracts filename to SHA256 checksum mappings
+ * Splits Packages file content into individual package entry blocks
+ * @param {string} packagesContent - Content of a Packages file
+ * @returns {string[]} Array of entry blocks (trimmed)
+ */
+function splitPackagesEntries(packagesContent) {
+  return packagesContent.split(/\n\s*\n/).filter(entry => entry.trim());
+}
+
+/**
+ * Extracts the value of a field from a package entry
+ * @param {string} entry - Package entry block
+ * @param {string} fieldName - Name of the field to extract (e.g., 'Architecture', 'Filename', 'SHA256')
+ * @returns {string|null} Field value or null if not found
+ */
+function extractFieldFromEntry(entry, fieldName) {
+  const prefix = `${fieldName}:`;
+  for (const line of entry.split('\n')) {
+    if (line.startsWith(prefix)) {
+      return line.substring(prefix.length).trim();
+    }
+  }
+  return null;
+}
+
+/**
+ * Extracts filename to SHA256 checksum mappings from a Packages file
  * @param {string} packagesPath - Path to the Packages file
  * @returns {Promise<Map<string, string>>} Map of filename (basename) to SHA256 checksum
  */
-export async function parsePackagesFile(packagesPath) {
+export async function extractChecksumMap(packagesPath) {
   const checksumMap = new Map();
 
   try {
     const content = await fs.readFile(packagesPath, 'utf-8');
-    
-    // Split by blank lines to get individual package entries
-    const entries = content.split(/\n\s*\n/).filter(entry => entry.trim());
+    const entries = splitPackagesEntries(content);
     
     for (const entry of entries) {
-      let filename = null;
-      let sha256 = null;
+      const filePath = extractFieldFromEntry(entry, 'Filename');
+      const sha256 = extractFieldFromEntry(entry, 'SHA256');
       
-      // Parse each line in the entry
-      for (const line of entry.split('\n')) {
-        if (line.startsWith('Filename:')) {
-          // Extract basename from path like ./pool/owner/repo/tag/filename.deb
-          const filePath = line.substring('Filename:'.length).trim();
-          filename = path.basename(filePath);
-        } else if (line.startsWith('SHA256:')) {
-          sha256 = line.substring('SHA256:'.length).trim();
-        }
-      }
-      
-      // If we found both filename and SHA256, add to map
-      // If multiple entries have the same filename, the last one wins
-      if (filename && sha256) {
+      if (filePath && sha256) {
+        // Extract basename from path like ./pool/owner/repo/tag/filename.deb
+        const filename = path.basename(filePath);
+        // If multiple entries have the same filename, the last one wins
         checksumMap.set(filename, sha256);
       }
     }
@@ -45,6 +58,30 @@ export async function parsePackagesFile(packagesPath) {
   }
   
   return checksumMap;
+}
+
+/**
+ * Extracts package entries grouped by their Architecture field from Packages file content
+ * @param {string} packagesContent - Content of a Packages file
+ * @returns {Array<{architecture: string, entry: string}>} Array of entries with their architecture
+ */
+export function extractEntriesByArchitecture(packagesContent) {
+  const entries = [];
+  const entryBlocks = splitPackagesEntries(packagesContent);
+  
+  for (const entryBlock of entryBlocks) {
+    const architecture = extractFieldFromEntry(entryBlock, 'Architecture');
+    
+    // If architecture found, add entry (skip entries without Architecture field)
+    if (architecture) {
+      entries.push({
+        architecture,
+        entry: entryBlock.trim()
+      });
+    }
+  }
+  
+  return entries;
 }
 
 /**

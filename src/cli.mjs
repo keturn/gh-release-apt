@@ -1,11 +1,9 @@
 import { Command } from 'commander';
 import { getLatestRelease, downloadDebAssets } from './github.mjs';
-import { organizeDebFiles } from './repository.mjs';
+import { organizeDebFiles, extractEntriesByArchitecture } from './repository.mjs';
 import { generatePackagesFile } from './dpkg.mjs';
 import path from 'path';
 import fs from 'fs/promises';
-import { createWriteStream } from 'fs';
-import { finished } from 'stream/promises';
 import { fdir } from 'fdir';
 import { $ as zx } from 'zx';
 
@@ -75,15 +73,14 @@ async function findFilesRecursive(dir, filename) {
 
 /**
  * Action handler for the assemble command
- * Concatenates all Packages files from pool/ subdirectories into a single Packages file
- * Uses streaming writes to avoid loading all content into memory at once
+ * Parses all Packages files from pool/ subdirectories, groups entries by Architecture,
+ * and writes separate Packages files to dists/stable/main/binary-${arch}/Packages for each architecture
  * @param {Object} options - Command options
  * @param {string} [options.output] - Output directory
  */
 export async function assembleAction(options) {
   const outputDir = path.resolve(options.output);
   const poolDir = path.join(outputDir, 'pool');
-  const outputPackagesPath = path.join(outputDir, 'Packages');
 
   console.log(`Scanning for Packages files in ${poolDir}...`);
 
@@ -95,52 +92,59 @@ export async function assembleAction(options) {
   }
 
   console.log(`Found ${packagesFiles.length} Packages file(s)`);
-  console.log(`Assembling into ${outputPackagesPath}...`);
+  console.log(`Parsing and grouping entries by architecture...`);
 
-  // Create write stream for output file
-  const writeStream = createWriteStream(outputPackagesPath, { encoding: 'utf8' });
+  // Group entries by architecture
+  const entriesByArch = new Map();
 
-  try {
-    // Process each Packages file and write to output stream
-    for (let i = 0; i < packagesFiles.length; i++) {
-      const packagesFile = packagesFiles[i];
-      
-      // Read file content and trim trailing whitespace
-      const content = await fs.readFile(packagesFile, 'utf-8');
-      const trimmed = content.trimEnd();
-      
-      if (trimmed) {
-        // Write trimmed content to stream
-        writeStream.write(trimmed);
+  // Process each Packages file
+  for (const packagesFile of packagesFiles) {
+    const content = await fs.readFile(packagesFile, 'utf-8');
+    const entries = extractEntriesByArchitecture(content);
+    
+    for (const { architecture, entry } of entries) {
+      if (!entriesByArch.has(architecture)) {
+        entriesByArch.set(architecture, []);
       }
-      
-      // Add blank line separator between files (except after the last one)
-      if (i < packagesFiles.length - 1) {
-        writeStream.write('\n\n');
-      } else {
-        // Add final newline after the last file
-        writeStream.write('\n');
-      }
+      entriesByArch.get(architecture).push(entry);
     }
+  }
 
-    // Close the write stream
-    writeStream.end();
+  if (entriesByArch.size === 0) {
+    throw new Error('No package entries with Architecture field found');
+  }
+
+  console.log(`Found ${entriesByArch.size} architecture(s): ${Array.from(entriesByArch.keys()).sort().join(', ')}`);
+
+  // Sort architectures alphabetically for consistent output
+  const architectures = Array.from(entriesByArch.keys()).sort();
+
+  // Write Packages file for each architecture
+  for (const arch of architectures) {
+    const distPath = path.join(outputDir, 'dists', 'stable', 'main', `binary-${arch}`);
+    const packagesPath = path.join(distPath, 'Packages');
     
-    // Wait for the stream to finish writing
-    await finished(writeStream);
-
+    // Ensure directory exists
+    await fs.mkdir(distPath, { recursive: true });
+    
+    // Write all entries for this architecture
+    const entries = entriesByArch.get(arch);
+    const packagesContent = entries.join('\n\n') + '\n';
+    await fs.writeFile(packagesPath, packagesContent, 'utf-8');
+    
+    console.log(`  Created ${packagesPath} (${entries.length} package(s))`);
+    
     // Compress the Packages file to Packages.xz
-    const outputPackagesXzPath = path.join(outputDir, 'Packages.xz');
-    console.log(`Compressing Packages file to ${outputPackagesXzPath}...`);
-    
+    const packagesXzPath = path.join(distPath, 'Packages.xz');
     try {
-      await zx`xz -k -f ${outputPackagesPath}`;
+      await zx`xz -k -f ${packagesPath}`;
       // xz creates Packages.xz in the same directory as the input file
       // Verify the compressed file was created
-      const stats = await fs.stat(outputPackagesXzPath);
+      const stats = await fs.stat(packagesXzPath);
       if (stats.size === 0) {
         throw new Error('Generated Packages.xz file is empty');
       }
+      console.log(`  Compressed to ${packagesXzPath}`);
     } catch (error) {
       if (error.code === 'ENOENT' || (error.stderr && error.stderr.includes('xz: not found'))) {
         throw new Error(
@@ -148,18 +152,13 @@ export async function assembleAction(options) {
         );
       }
       throw new Error(
-        `Failed to compress Packages file: ${error.message || error.stderr || 'Unknown error'}`
+        `Failed to compress Packages file for ${arch}: ${error.message || error.stderr || 'Unknown error'}`
       );
     }
-
-    console.log(`\n✓ Packages file assembled successfully!`);
-    console.log(`  Output file: ${outputPackagesPath}`);
-    console.log(`  Compressed file: ${outputPackagesXzPath}`);
-    console.log(`  Combined ${packagesFiles.length} fragment(s)`);
-  } catch (error) {
-    writeStream.destroy();
-    throw error;
   }
+
+  console.log(`\n✓ Packages files assembled successfully!`);
+  console.log(`  Created ${architectures.length} architecture-specific Packages file(s) in dists/stable/main/`);
 }
 
 /**
@@ -191,7 +190,7 @@ export function createCommand() {
 
   program
     .command('assemble')
-    .description('Assemble all Packages fragments from pool/ subdirectories into a single Packages file')
+    .description('Assemble all Packages fragments from pool/ subdirectories, grouped by architecture into dists/stable/main/binary-${arch}/Packages')
     .option(
       '-o, --output <directory>',
       'Output directory for the APT repository',
