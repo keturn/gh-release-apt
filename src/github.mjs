@@ -100,11 +100,10 @@ export async function categorizeAssetsByChecksum(assets, existingChecksums, down
  * @param {string} repo - Repository name
  * @param {string} outputDir - Root directory for the APT repository
  * @param {string} [token] - Optional GitHub token for authentication
- * @param {Function} [downloadFn] - Optional download function (for testing)
  * @returns {Promise<string[]>} Array of paths to downloaded .deb files
  * @throws {Error} If download fails
  */
-export async function downloadDebAssets(release, owner, repo, outputDir, token, downloadFn = downloadFile) {
+export async function downloadDebAssets(release, owner, repo, outputDir, token) {
   const debAssets = filterDebAssets(release);
 
   const downloadDir = path.join(outputDir, 'pool', owner, repo, release.tag_name);
@@ -127,7 +126,7 @@ export async function downloadDebAssets(release, owner, repo, outputDir, token, 
 
   for (const { asset, filePath } of toDownload) {
     try {
-      await downloadFn(asset.browser_download_url, filePath, authHeader);
+      await downloadFile(asset.browser_download_url, filePath, authHeader);
       downloadedFiles.push(filePath);
       console.log(`Downloaded: ${asset.name}`);
     } catch (error) {
