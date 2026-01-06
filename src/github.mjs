@@ -53,22 +53,27 @@ export function filterDebAssets(release) {
 /**
  * Downloads all .deb assets from a GitHub release
  * @param {Object} release - GitHub release object
- * @param {string} outputDir - Directory to save downloaded files
+ * @param {string} owner - Repository owner
+ * @param {string} repo - Repository name
+ * @param {string} outputDir - Root directory for the APT repository
  * @param {string} [token] - Optional GitHub token for authentication
  * @returns {Promise<string[]>} Array of paths to downloaded .deb files
  * @throws {Error} If download fails
  */
-export async function downloadDebAssets(release, outputDir, token) {
+export async function downloadDebAssets(release, owner, repo, outputDir, token) {
   const debAssets = filterDebAssets(release);
 
+  // Construct path: pool/{owner}/{repo}/{tag_name}/
+  const downloadDir = path.join(outputDir, 'pool', owner, repo, release.tag_name);
+  
   // Ensure output directory exists
-  await fs.mkdir(outputDir, { recursive: true });
+  await fs.mkdir(downloadDir, { recursive: true });
 
   const authHeader = token || process.env.GITHUB_TOKEN;
   const downloadedFiles = [];
 
   for (const asset of debAssets) {
-    const filePath = path.join(outputDir, asset.name);
+    const filePath = path.join(downloadDir, asset.name);
 
     try {
       await downloadFile(asset.browser_download_url, filePath, authHeader);

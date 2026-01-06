@@ -39,24 +39,16 @@ export async function runAction(repository, options) {
   console.log(`Found release: ${release.tag_name}`);
   console.log(`Downloading .deb assets...`);
 
-  // Create temporary directory for initial downloads
-  const tempDir = path.join(outputDir, '.temp');
-  const debFiles = await downloadDebAssets(release, tempDir, token);
+  // Download directly to pool/{owner}/{repo}/{tag_name}/ structure
+  const debFiles = await downloadDebAssets(release, owner, repo, outputDir, token);
 
   console.log(`Downloaded ${debFiles.length} .deb file(s)`);
   console.log(`Organizing files into APT repository structure...`);
 
-  const { debDir, packagesPath } = await organizeDebFiles(debFiles, outputDir);
+  const { debDir, packagesPath } = await organizeDebFiles(debFiles, owner, repo, release.tag_name, outputDir);
 
   console.log(`Generating Packages file...`);
   await generatePackagesFile(debDir, packagesPath);
-
-  // Clean up temporary directory
-  try {
-    await fs.rm(tempDir, { recursive: true, force: true });
-  } catch (error) {
-    // Ignore cleanup errors
-  }
 
   console.log(`\n✓ APT repository created successfully!`);
   console.log(`  Output directory: ${outputDir}`);

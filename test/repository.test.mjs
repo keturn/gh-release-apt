@@ -5,47 +5,50 @@ import fs from 'fs/promises';
 import path from 'path';
 import { tmpdir } from 'os';
 
-test('organizeDebFiles creates correct directory structure', async () => {
+test('organizeDebFiles returns correct paths for new directory structure', async () => {
   const outputDir = path.join(tmpdir(), 'test-repo-' + Date.now());
-  const tempDebDir = path.join(outputDir, '.temp');
+  const owner = 'foo';
+  const repo = 'bar';
+  const tagName = 'v1.0.0';
+  
+  // Create .deb files in the new structure: pool/{owner}/{repo}/{tagName}/
+  const debDir = path.join(outputDir, 'pool', owner, repo, tagName);
+  await fs.mkdir(debDir, { recursive: true });
+  const debFile1 = path.join(debDir, 'package1.deb');
+  const debFile2 = path.join(debDir, 'package2.deb');
+  
+  // Create empty files to simulate .deb files
+  await fs.writeFile(debFile1, 'fake deb content');
+  await fs.writeFile(debFile2, 'fake deb content');
+  
+  const result = await organizeDebFiles([debFile1, debFile2], owner, repo, tagName, outputDir);
+  
+  // Verify structure paths are correct
+  assert.equal(result.debDir, debDir);
+  assert.equal(result.packagesPath, path.join(outputDir, 'Packages'));
+  
+  // Verify files are in the correct location
+  const files = await fs.readdir(debDir);
+  assert.equal(files.length, 2);
+  assert(files.includes('package1.deb'));
+  assert(files.includes('package2.deb'));
   
   try {
-    // Create temporary .deb files for testing
-    await fs.mkdir(tempDebDir, { recursive: true });
-    const debFile1 = path.join(tempDebDir, 'package1.deb');
-    const debFile2 = path.join(tempDebDir, 'package2.deb');
-    
-    // Create empty files to simulate .deb files
-    await fs.writeFile(debFile1, 'fake deb content');
-    await fs.writeFile(debFile2, 'fake deb content');
-    
-    const result = await organizeDebFiles([debFile1, debFile2], outputDir);
-    
-    // Verify structure was created
-    assert.equal(result.debDir, path.join(outputDir, 'pool', 'main'));
-    assert.equal(result.packagesPath, path.join(outputDir, 'Packages'));
-    
-    // Verify files were copied
-    const poolDir = result.debDir;
-    const files = await fs.readdir(poolDir);
-    assert.equal(files.length, 2);
-    assert(files.includes('package1.deb'));
-    assert(files.includes('package2.deb'));
-  } finally {
-    try {
-      await fs.rm(outputDir, { recursive: true, force: true });
-    } catch {}
-  }
+    await fs.rm(outputDir, { recursive: true, force: true });
+  } catch {}
 });
 
 test('organizeDebFiles handles empty array', async () => {
   const outputDir = path.join(tmpdir(), 'test-repo-empty-' + Date.now());
+  const owner = 'foo';
+  const repo = 'bar';
+  const tagName = 'v1.0.0';
   
   try {
-    const result = await organizeDebFiles([], outputDir);
+    const result = await organizeDebFiles([], owner, repo, tagName, outputDir);
     
     // Should still create the structure
-    assert.equal(result.debDir, path.join(outputDir, 'pool', 'main'));
+    assert.equal(result.debDir, path.join(outputDir, 'pool', owner, repo, tagName));
     assert.equal(result.packagesPath, path.join(outputDir, 'Packages'));
     
     // Directory should exist
