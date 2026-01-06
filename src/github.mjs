@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import { createWriteStream } from 'fs';
 import path from 'path';
 import { Writable } from 'stream';
+import { parsePackagesFile } from './repository.mjs';
 
 /**
  * Fetches the latest release for a GitHub repository
@@ -57,10 +58,11 @@ export function filterDebAssets(release) {
  * @param {string} repo - Repository name
  * @param {string} outputDir - Root directory for the APT repository
  * @param {string} [token] - Optional GitHub token for authentication
+ * @param {Function} [downloadFn] - Optional download function (for testing)
  * @returns {Promise<string[]>} Array of paths to downloaded .deb files
  * @throws {Error} If download fails
  */
-export async function downloadDebAssets(release, owner, repo, outputDir, token) {
+export async function downloadDebAssets(release, owner, repo, outputDir, token, downloadFn = downloadFile) {
   const debAssets = filterDebAssets(release);
 
   // Construct path: pool/{owner}/{repo}/{tag_name}/
@@ -69,14 +71,45 @@ export async function downloadDebAssets(release, owner, repo, outputDir, token) 
   // Ensure output directory exists
   await fs.mkdir(downloadDir, { recursive: true });
 
+  // Determine Packages file path (same logic as organizeDebFiles)
+  const packagesPath = path.join(downloadDir, 'Packages');
+  
+  // Parse existing Packages file to get filename -> SHA256 mappings
+  const existingChecksums = await parsePackagesFile(packagesPath);
+
   const authHeader = token || process.env.GITHUB_TOKEN;
   const downloadedFiles = [];
 
   for (const asset of debAssets) {
     const filePath = path.join(downloadDir, asset.name);
+    
+    // Check if asset is already in Packages file with matching SHA256
+    const existingSHA256 = existingChecksums.get(asset.name);
+    
+    // Extract SHA256 from GitHub asset digest field (format: "sha256:...")
+    let assetSHA256 = null;
+    if (asset.digest && typeof asset.digest === 'string' && asset.digest.startsWith('sha256:')) {
+      assetSHA256 = asset.digest.substring(7); // Remove "sha256:" prefix
+    }
+    
+    if (existingSHA256 && assetSHA256) {
+      // Compare checksums (case-insensitive comparison)
+      if (existingSHA256.toLowerCase() === assetSHA256.toLowerCase()) {
+        // Check if file exists on disk before skipping
+        try {
+          await fs.access(filePath);
+          downloadedFiles.push(filePath);
+          console.log(`Skipped: ${asset.name} (checksum matches)`);
+          continue;
+        } catch {
+          // File doesn't exist, proceed with download
+        }
+      }
+    }
 
+    // Download the asset if checksums don't match, don't exist, or file is missing
     try {
-      await downloadFile(asset.browser_download_url, filePath, authHeader);
+      await downloadFn(asset.browser_download_url, filePath, authHeader);
       downloadedFiles.push(filePath);
       console.log(`Downloaded: ${asset.name}`);
     } catch (error) {
@@ -93,8 +126,9 @@ export async function downloadDebAssets(release, owner, repo, outputDir, token) 
  * @param {string} filePath - Local path to save the file
  * @param {string} [token] - Optional GitHub token for authentication
  * @returns {Promise<void>}
+ * @private Exported for testing purposes only
  */
-async function downloadFile(url, filePath, token) {
+export async function downloadFile(url, filePath, token) {
   const headers = {};
   if (token) {
     headers.Authorization = `token ${token}`;
