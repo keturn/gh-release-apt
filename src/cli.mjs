@@ -7,6 +7,7 @@ import fs from 'fs/promises';
 import { createWriteStream } from 'fs';
 import { finished } from 'stream/promises';
 import { fdir } from 'fdir';
+import { $ as zx } from 'zx';
 
 /**
  * Validates and parses the repository identifier format
@@ -128,8 +129,32 @@ export async function assembleAction(options) {
     // Wait for the stream to finish writing
     await finished(writeStream);
 
+    // Compress the Packages file to Packages.xz
+    const outputPackagesXzPath = path.join(outputDir, 'Packages.xz');
+    console.log(`Compressing Packages file to ${outputPackagesXzPath}...`);
+    
+    try {
+      await zx`xz -k -f ${outputPackagesPath}`;
+      // xz creates Packages.xz in the same directory as the input file
+      // Verify the compressed file was created
+      const stats = await fs.stat(outputPackagesXzPath);
+      if (stats.size === 0) {
+        throw new Error('Generated Packages.xz file is empty');
+      }
+    } catch (error) {
+      if (error.code === 'ENOENT' || (error.stderr && error.stderr.includes('xz: not found'))) {
+        throw new Error(
+          'xz not found. Please install xz-utils package.'
+        );
+      }
+      throw new Error(
+        `Failed to compress Packages file: ${error.message || error.stderr || 'Unknown error'}`
+      );
+    }
+
     console.log(`\n✓ Packages file assembled successfully!`);
     console.log(`  Output file: ${outputPackagesPath}`);
+    console.log(`  Compressed file: ${outputPackagesXzPath}`);
     console.log(`  Combined ${packagesFiles.length} fragment(s)`);
   } catch (error) {
     writeStream.destroy();
