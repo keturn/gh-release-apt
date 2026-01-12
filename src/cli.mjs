@@ -86,12 +86,16 @@ export function createCommand() {
 
   program
     .command('assemble')
-    .description('Assemble all Packages fragments from pool/ subdirectories, grouped by architecture into dists/stable/main/binary-${arch}/Packages')
+    .summary('Assemble and sign Packages and Release files')
+    .description(`Assemble all Packages fragments from pool/ subdirectories, grouped by architecture into dists/stable/main/binary-${arch}/Packages, and build the Release file.
+      
+      Uses the SIGNING_KEY environment variable to sign the Release file.`)
     .option(
       '-o, --output <directory>',
       'Output directory for the APT repository',
       './apt-repo'
     )
+    .option('--no-sign', 'Do not sign the Release file')
     .action(assembleAction);
 
   return program;

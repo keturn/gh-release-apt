@@ -22,9 +22,12 @@ do save the resulting `pool/**/Packages` files (to version control or a persiste
 
 ### Building the Repository
 
+With your signing key in the `SIGNING_KEY` environment variable, run:
+
 `gh-release-apt assemble`
 
 Then deploy to your server—_excluding_ the `.deb` files themselves.
+
 
 
 ## Design
@@ -53,3 +56,18 @@ For that reason, we organize the repository's package pool so it's easy to map b
 [pico.sh](https://pico.sh/pgs#-redirects),
 [Codeberg](https://docs.codeberg.org/codeberg-pages/redirects/),
 etc.
+
+
+## Appendix: Creating a Signing Key
+
+This is not the only way to create a signing key, but if you don't have one already,
+this creates a minimal key for signing only.
+
+```sh
+sq key generate --without-password --can-sign --cannot-encrypt --cannot-authenticate --shared-key --no-userids
+sq cert export --cert $FINGERPRINT | sq packet dearmor --output archive-keyring.pgp
+sq key export --cert $FINGERPRINT | gh secret set SIGNING_KEY
+```
+
+See [DebianRepository/UseThirdParty](https://wiki.debian.org/DebianRepository/UseThirdParty#OpenPGP_certificate_distribution)
+for recommendations on where to name and place the certificate.
