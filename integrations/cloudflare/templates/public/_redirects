@@ -1,0 +1,1 @@
+/pool/:owner/:repo/:tag/* https://www.github.com/:owner/:repo/releases/download/:tag/:splat

@@ -3,6 +3,7 @@ import { getLatestRelease, downloadDebAssets } from './github.mjs';
 import { organizeDebFiles } from './repository.mjs';
 import { generatePackagesFile } from './dpkg.mjs';
 import path from 'path';
+import { assembleAction } from './assembleAction.mjs';
 
 /**
  * Validates and parses the repository identifier format
@@ -55,6 +56,7 @@ export async function runAction(repository, options) {
   console.log(`  .deb files: ${debDir}`);
 }
 
+
 /**
  * Creates and configures the Commander.js command
  * @returns {Command} Configured command instance
@@ -65,7 +67,11 @@ export function createCommand() {
   program
     .name('gh-release-apt')
     .description('Generate APT repositories from GitHub release .deb assets')
-    .version('1.0.0')
+    .version('1.0.0');
+
+  program
+    .command('import')
+    .description('Import .deb assets from a GitHub release into an APT repository')
     .argument('<owner/repo>', 'GitHub repository in owner/repo format', parseRepository)
     .option(
       '-o, --output <directory>',
@@ -77,6 +83,20 @@ export function createCommand() {
       'GitHub token for authentication (or use GITHUB_TOKEN env var)'
     )
     .action(runAction);
+
+  program
+    .command('assemble')
+    .summary('Assemble and sign Packages and Release files')
+    .description(`Assemble all Packages fragments from pool/ subdirectories, grouped by architecture into dists/stable/main/binary-$arch/Packages, and build the Release file.
+      
+      Uses the SIGNING_KEY environment variable to sign the Release file.`)
+    .option(
+      '-o, --output <directory>',
+      'Output directory for the APT repository',
+      './apt-repo'
+    )
+    .option('--no-sign', 'Do not sign the Release file')
+    .action(assembleAction);
 
   return program;
 }
