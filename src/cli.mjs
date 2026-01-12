@@ -87,7 +87,7 @@ export function createCommand() {
   program
     .command('assemble')
     .summary('Assemble and sign Packages and Release files')
-    .description(`Assemble all Packages fragments from pool/ subdirectories, grouped by architecture into dists/stable/main/binary-${arch}/Packages, and build the Release file.
+    .description(`Assemble all Packages fragments from pool/ subdirectories, grouped by architecture into dists/stable/main/binary-$arch/Packages, and build the Release file.
       
       Uses the SIGNING_KEY environment variable to sign the Release file.`)
     .option(
