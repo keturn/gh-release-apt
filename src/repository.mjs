@@ -43,9 +43,7 @@ export async function extractChecksumMap(packagesPath) {
       const sha256 = extractFieldFromEntry(entry, 'SHA256');
       
       if (filePath && sha256) {
-        // Extract basename from path like ./pool/owner/repo/tag/filename.deb
         const filename = path.basename(filePath);
-        // If multiple entries have the same filename, the last one wins
         checksumMap.set(filename, sha256);
       }
     }
@@ -72,7 +70,6 @@ export function extractEntriesByArchitecture(packagesContent) {
   for (const entryBlock of entryBlocks) {
     const architecture = extractFieldFromEntry(entryBlock, 'Architecture');
     
-    // If architecture found, add entry (skip entries without Architecture field)
     if (architecture) {
       entries.push({
         architecture,

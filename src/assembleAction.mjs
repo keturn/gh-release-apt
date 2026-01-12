@@ -11,16 +11,13 @@ import { fdir } from 'fdir';
  * and writes separate Packages files to dists/stable/main/binary-${arch}/Packages for each architecture
  * @param {Object} options - Command options
  * @param {string} [options.output] - Output directory
- * @param {boolean} [options.sign] - Do not sign the Release file
+ * @param {boolean} [options.sign] - Sign the Release file
  */
 
 export async function assembleAction(options) {
   const outputDir = path.resolve(options.output);
   const poolDir = path.join(outputDir, 'pool');
 
-  console.log(`Scanning for Packages files in ${poolDir}...`);
-
-  // Find all Packages files in pool/ subdirectories
   const packagesFiles = await findFilesRecursive(poolDir, 'Packages');
 
   if (packagesFiles.length === 0) {
@@ -30,10 +27,8 @@ export async function assembleAction(options) {
   console.log(`Found ${packagesFiles.length} Packages file(s)`);
   console.log(`Parsing and grouping entries by architecture...`);
 
-  // Group entries by architecture
   const entriesByArch = new Map();
 
-  // Process each Packages file
   for (const packagesFile of packagesFiles) {
     const content = await fs.readFile(packagesFile, 'utf-8');
     const entries = extractEntriesByArchitecture(content);
@@ -57,7 +52,6 @@ export async function assembleAction(options) {
     const distPath = path.join(outputDir, 'dists', 'stable', 'main', `binary-${arch}`);
     const packagesPath = path.join(distPath, 'Packages');
 
-    // Ensure directory exists
     await fs.mkdir(distPath, { recursive: true });
 
     // Write all entries for this architecture
@@ -85,8 +79,8 @@ export async function assembleAction(options) {
  * @returns {Promise<void>}
  */
 export async function writeReleaseFile(outputDir, architectures, sign) {
-    const distPath = path.join(outputDir, 'dists', 'stable');
-    const releaseContent = await _makeReleaseContent(distPath, architectures);
+  const distPath = path.join(outputDir, 'dists', 'stable');
+  const releaseContent = await _makeReleaseContent(distPath, architectures);
   const releasePath = path.join(distPath, 'Release');
 
   await fs.writeFile(releasePath, releaseContent, 'utf-8');
@@ -122,6 +116,8 @@ SHA256:
 
 /**
  * Sign the Release file.
+ * 
+ * Uses `sq` and assumes the SIGNING_KEY environment variable is set.
  * @param {string} distPath - Distribution path
  * @returns {Promise<void>}
  */
