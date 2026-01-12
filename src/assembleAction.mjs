@@ -95,7 +95,7 @@ export async function writeReleaseFile(outputDir, architectures, sign) {
  * @param {string[]} architectures - Architectures
  * @returns {Promise<string>}
  */
-async function _makeReleaseContent(distPath, architectures) {
+export async function _makeReleaseContent(distPath, architectures) {
     let releaseContent = `Suite: stable
 Architectures: ${architectures.join(' ')}
 Components: main

@@ -1,0 +1,6 @@
+Package: test-package
+Version: 1.0.0
+Architecture: amd64
+Filename: pool/test/test-package_1.0.0_amd64.deb
+Size: 12345
+SHA256: abc123def456
