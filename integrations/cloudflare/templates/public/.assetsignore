@@ -1,0 +1,2 @@
+# deb package files are served by redirects
+*.deb
