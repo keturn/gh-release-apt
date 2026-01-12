@@ -8,6 +8,15 @@ Here we aim to make it easy and affordable to make an apt-compatible repository 
 [^1]: Shoutout to [GoReleaser](https://goreleaser.com/) and [Tauri](https://v2.tauri.app/distribute/debian/) as a few tools I've seen enabling Debian packaging in the wild.
 
 
+## Requirements
+
+```sh
+sudo apt-get install --no-recommends dpkg-dev sq xz-utils
+```
+
+And [Node.js v24 (LTS)](https://nodejs.org/en/download) with pnpm.
+
+
 ## Usage
 
 ### Importing a Release
