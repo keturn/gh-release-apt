@@ -2,6 +2,7 @@
   "name": "@keturn/gh-release-apt",
   "version": "0.9.0",
   "description": "Generate APT repositories from GitHub release .deb assets",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/keturn/gh-release-apt.git"
