@@ -41,8 +41,7 @@ There should now be `dists` and `pool` subdirectories beneath the `public` conte
 
 For a manual release, you could deploy now and Cloudflare's wrangler would use your browser to log you in and prompt for authorization.
 
-For automated workflows, you'll want to [create an API token]( 
-https://dash.cloudflare.com/?to=/:account/api-tokens&permissionGroupKeys=%5B%7B%22key%22%3A%22workers_scripts%22%2C%22type%22%3A%22edit%22%7D%5D&name=Package%20Repository%20Workers) for this purpose.
+For automated workflows, you'll want to [create an API token]( https://dash.cloudflare.com/?to=/:account/api-tokens&permissionGroupKeys=%5B%7B%22key%22%3A%22workers_scripts%22%2C%22type%22%3A%22edit%22%7D%5D&name=Package%20Repository%20Workers) for this purpose.
 It requires the **Workers Scripts** permission.
 
 > [!NOTE]
