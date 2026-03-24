@@ -30,8 +30,8 @@ Now to build your repo. We can automate updates to it later, but let's walk thro
 
 ```sh
 cd your-site-name-here
-gh-release-apt.mjs import -o public your-repo-owner/your-repo
-gh-release-apt.mjs assemble -o public
+pnpm exec gh-release-apt import -o public your-repo-owner/your-repo
+pnpm exec gh-release-apt assemble -o public
 
 git add --all
 git commit -m 'imported Debian packages from latest release'
@@ -63,9 +63,6 @@ pnpm run deploy
 
 ## TODO
 
-- [ ] Clarify how to get and run the `gh-release-apt` script.
-  - Use ~~npx~~ `pnpm dlx`?
-  - Or, since wrangler sets up with a `package.json`, we add ourselves as a dependency there?
 - [ ] Add notes on [using your own domain](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/#add-a-custom-domain) for the URL.
 - [ ] Write the sharable workflow that automates the above.
   - inputs:
