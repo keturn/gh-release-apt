@@ -67,7 +67,7 @@ export function createCommand() {
   program
     .name('gh-release-apt')
     .description('Generate APT repositories from GitHub release .deb assets')
-    .version('0.9.0');
+    .version('0.9.1');
 
   program
     .command('import')
