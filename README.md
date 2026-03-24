@@ -38,6 +38,11 @@ With your signing key in the `SIGNING_KEY` environment variable, run:
 Then deploy to your server—_excluding_ the `.deb` files themselves.
 
 
+## Host-Specific Integration Guides
+
+- [Cloudflare](integrations/cloudflare/README.md)
+- … <!-- Additions welcome! -->
+
 
 ## Design
 
@@ -47,7 +52,7 @@ which is great, because we don't want the overhead of storing extra copies of th
 GitHub keeps paying for the bandwidth,
 and the project's download analytics keep working.
 
-[GitHub Pages doesn't offer a way to configure redirects](https://github.com/orgs/community/discussions/86095),
+[GitHub Pages doesn't provide a way to configure redirects](https://github.com/orgs/community/discussions/86095),
 but other hosts do offer this in their static web hosting features.[^2]
 There is, however, often a limit on the number of redirect rules.
 For that reason, we organize the repository's package pool so it's easy to map back to GitHub URLs with a single rule (instead of Debian's alphabetized structure).
@@ -65,6 +70,22 @@ For that reason, we organize the repository's package pool so it's easy to map b
 [pico.sh](https://pico.sh/pgs#-redirects),
 [Codeberg](https://docs.codeberg.org/codeberg-pages/redirects/),
 etc.
+
+### Security Considerations 
+
+No code from the target GitHub repository or its release assets is executed in the process of creating the package repository.
+
+Assets named `*.deb` are downloaded and _extracted,_ so if we ever get another arbitrary code execution exploit in a decompression routine,
+*that* would run with access to your signing key and write permissions to both your git repository and package repository.
+But anything able to add an asset to your GitHub Release probably has all that already.
+
+The usual supply chain considerations apply for gh-release-apt. (As well as any other tools you use during deployment, e.g. wrangler.)
+
+Debian and Ubuntu-based systems extend a *lot* of trust to package repositories.
+System administrators are encouraged to use the [pinning mechanism of APT Preferences](https://manpages.debian.org/testing/apt/apt_preferences.5.en.html#The_Effect_of_APT_Preferences) to limit what third-party repositories are used for,
+but this doesn't happen by default and the manual even [discourages it for novices](https://www.debian.org/doc/manuals/debian-reference/ch02.en.html#_tweaking_candidate_version).
+Users should assume that adding your repository to their system's sources will allow you (the repository owner) to run unrestricted code any time they `install` or `upgrade` ***any*** package,
+*even if the name of the package has nothing to do with your project.*
 
 
 ## Appendix: Creating a Signing Key
