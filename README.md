@@ -38,6 +38,11 @@ With your signing key in the `SIGNING_KEY` environment variable, run:
 Then deploy to your server—_excluding_ the `.deb` files themselves.
 
 
+## Host-Specific Integration Guides
+
+- [Cloudflare](integrations/cloudflare/README.md)
+- … <!-- Additions welcome! -->
+
 
 ## Design
 

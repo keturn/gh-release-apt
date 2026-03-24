@@ -1,8 +1,8 @@
 # Debian Repository
 ## deb package files are served by redirects
 *.deb
-## Packages in dist/ are generated (from those in pool/)
-/public/dist/**/Packages
+## Packages in dists/ are generated (from those in pool/)
+/public/dists/**/Packages
 ## Release files are auto-generated
 Release
 Release.gpg
