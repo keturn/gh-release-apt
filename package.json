@@ -1,31 +1,38 @@
 {
-  "name": "gh-release-apt",
-  "version": "1.0.0",
+  "name": "@keturn/gh-release-apt",
+  "version": "0.9.0",
   "description": "Generate APT repositories from GitHub release .deb assets",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/keturn/gh-release-apt.git"
+  },
   "type": "module",
   "engines": {
     "node": "^24.0.0"
   },
-  "packageManager": "pnpm@11.0.0-dev.1005+sha512.91f84a392eea348ea4852a182912d2520273a4336f933b78cc44bc931eb999923c097e9433a9b355adc1f725725ea99082fc9f032a559df832632e764c92c798",
+  "packageManager": "pnpm@10.32.1",
   "main": "bin/gh-release-apt.mjs",
   "bin": {
     "gh-release-apt": "./bin/gh-release-apt.mjs"
   },
+  "files": [
+    "bin",
+    "src"
+  ],
   "scripts": {
     "test": "node --enable-source-maps --import @power-assert/node --test",
     "test:coverage": "node --experimental-test-coverage --test",
     "start": "node bin/gh-release-apt.mjs"
   },
   "dependencies": {
-    "@octokit/rest": "^21.0.2",
-    "commander": "^12.1.0",
+    "@octokit/rest": "^22.0.1",
+    "commander": "^14.0.3",
     "fdir": "^6.5.0",
-    "fs-extra": "^11.2.0",
+    "fs-extra": "^11.3.4",
     "zx": "8.8.5-lite"
   },
   "devDependencies": {
     "@power-assert/node": "^0.6.0",
     "@power-assert/runtime": "^0.3.1"
-  },
-  "private": true
+  }
 }
