@@ -4,10 +4,13 @@
 	"private": true,
 	"scripts": {
 		"deploy": "wrangler deploy",
+		"import-release": "gh-release-apt import -o public",
+		"build": "gh-release-apt assemble -o public",
 		"dev": "wrangler dev",
 		"start": "wrangler dev"
 	},
 	"devDependencies": {
-		"wrangler": "^3.78.5"
+		"@keturn/gh-release-apt": "^0.9.1",
+		"wrangler": "^4.77.0"
 	}
 }
